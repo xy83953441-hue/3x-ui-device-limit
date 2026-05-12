@@ -286,6 +286,9 @@ func (s *Server) startTask() {
 	// check client ips from log file every 10 sec
 	s.cron.AddJob("@every 10s", job.NewCheckClientIpJob())
 
+	// clean expired user sessions every hour
+	s.cron.AddJob("@every 1h", job.NewCleanExpiredSessionsJob())
+
 	s.cron.AddJob("@every 5s", job.NewNodeHeartbeatJob())
 
 	s.cron.AddJob("@every 5s", job.NewNodeTrafficSyncJob())

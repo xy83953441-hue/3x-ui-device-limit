@@ -96,3 +96,37 @@ func ClearSession(c *gin.Context) error {
 	}
 	return nil
 }
+
+// GetSessionId returns the current session ID
+func GetSessionId(c *gin.Context) string {
+	s := sessions.Default(c)
+	if v := s.Get("SESSION_ID"); v != nil {
+		if sessionId, ok := v.(string); ok {
+			return sessionId
+		}
+	}
+	return ""
+}
+
+// GetDeviceId returns the current device ID
+func GetDeviceId(c *gin.Context) string {
+	s := sessions.Default(c)
+	if v := s.Get("DEVICE_ID"); v != nil {
+		if deviceId, ok := v.(string); ok {
+			return deviceId
+		}
+	}
+	return ""
+}
+
+// SetLoginUserWithSession sets login user with session and device info
+func SetLoginUserWithSession(c *gin.Context, user *model.User, sessionId, deviceId string) error {
+	if user == nil {
+		return nil
+	}
+	s := sessions.Default(c)
+	s.Set(loginUserKey, *user)
+	s.Set("SESSION_ID", sessionId)
+	s.Set("DEVICE_ID", deviceId)
+	return s.Save()
+}

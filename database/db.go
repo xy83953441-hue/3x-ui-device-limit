@@ -40,6 +40,7 @@ func initModels() error {
 		&model.HistoryOfSeeders{},
 		&model.CustomGeoResource{},
 		&model.Node{},
+		&model.UserSession{}, // 用户会话表 - 设备限制功能
 	}
 	for _, model := range models {
 		if err := db.AutoMigrate(model); err != nil {

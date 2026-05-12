@@ -15,9 +15,11 @@ tmp/
 # Ignore build and distribution directories
 backup/
 bin/
-dist/
 release/
 node_modules/
+
+# Ignore Vite dev build output but NOT web/dist/ (required for go:embed)
+frontend/dist/
 
 # Ignore compiled binaries
 main

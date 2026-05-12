@@ -38,9 +38,10 @@ func IsHysteria(p Protocol) bool {
 
 // User represents a user account in the 3x-ui panel.
 type User struct {
-	Id       int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Id         int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	MaxDevices int    `json:"maxDevices" gorm:"default:5"` // 最大同时在线设备数，0表示不限制
 }
 
 // Inbound represents an Xray inbound configuration with traffic statistics and settings.
@@ -189,4 +190,16 @@ type Client struct {
 	Reset      int            `json:"reset" form:"reset"`           // Reset period in days
 	CreatedAt  int64          `json:"created_at,omitempty"`         // Creation timestamp
 	UpdatedAt  int64          `json:"updated_at,omitempty"`         // Last update timestamp
+}
+
+// UserSession represents a login session for tracking device logins
+type UserSession struct {
+	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserId    int    `json:"userId" gorm:"index"`
+	SessionId string `json:"sessionId" gorm:"uniqueIndex;size:64"`
+	DeviceId  string `json:"deviceId" gorm:"size:128"`
+	UserAgent string `json:"userAgent" gorm:"size:512"`
+	IpAddress string `json:"ipAddress" gorm:"size:45"`
+	LoginAt   int64  `json:"loginAt"`
+	LastSeen  int64  `json:"lastSeen"`
 }

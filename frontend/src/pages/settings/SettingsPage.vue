@@ -8,9 +8,11 @@ import {
   MessageOutlined,
   CloudServerOutlined,
   CodeOutlined,
+  MobileOutlined,
 } from '@ant-design/icons-vue';
 
 import { HttpUtil, PromiseUtil } from '@/utils';
+import DeviceManager from './DeviceManager.vue';
 import { theme as themeState, antdThemeConfig } from '@/composables/useTheme.js';
 import { useMediaQuery } from '@/composables/useMediaQuery.js';
 import AppSidebar from '@/components/AppSidebar.vue';
@@ -234,6 +236,13 @@ const alertVisible = ref(true);
                         <span>{{ t('pages.settings.subSettings') }} (Formats)</span>
                       </template>
                       <SubscriptionFormatsTab :all-setting="allSetting" />
+                    </a-tab-pane>
+                    <a-tab-pane key="6" class="tab-pane">
+                      <template #tab>
+                        <MobileOutlined />
+                        <span>{{ t('pages.settings.deviceManagement') }}</span>
+                      </template>
+                      <DeviceManager />
                     </a-tab-pane>
                   </a-tabs>
                 </a-col>

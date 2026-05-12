@@ -25,13 +25,16 @@ type IndexController struct {
 	BaseController
 
 	settingService service.SettingService
-	userService    service.UserService
+	userService   service.UserService
 	tgbot          service.Tgbot
+	sessionManager service.SessionManagerService
 }
 
 // NewIndexController creates a new IndexController and initializes its routes.
 func NewIndexController(g *gin.RouterGroup) *IndexController {
-	a := &IndexController{}
+	a := &IndexController{
+		sessionManager: service.SessionManagerService{},
+	}
 	a.initRouter(g)
 	return a
 }
@@ -124,9 +127,21 @@ func (a *IndexController) login(c *gin.Context) {
 		Status:   service.LoginSuccess,
 	})
 
-	if err := session.SetLoginUser(c, user); err != nil {
+	// Generate session ID and device ID for device limit feature
+	sessionId, _ := a.sessionManager.GenerateSessionId()
+	deviceId := a.sessionManager.GenerateDeviceId()
+	userAgent := c.Request.UserAgent()
+
+	// Set login user with session and device info
+	if err := session.SetLoginUserWithSession(c, user, sessionId, deviceId); err != nil {
 		logger.Warning("Unable to save session:", err)
 		return
+	}
+
+	// Register the session for device limit tracking
+	if err := a.sessionManager.RegisterSession(user.Id, sessionId, deviceId, userAgent, remoteIP); err != nil {
+		logger.Warning("Failed to register session:", err)
+		// Continue anyway - session is already set
 	}
 
 	logger.Infof("%s logged in successfully", safeUser)
@@ -144,6 +159,11 @@ func loginFailureReason(err error) string {
 func (a *IndexController) logout(c *gin.Context) {
 	user := session.GetLoginUser(c)
 	if user != nil {
+		// Remove session from database for device limit tracking
+		sessionId := session.GetSessionId(c)
+		if sessionId != "" {
+			a.sessionManager.RemoveSession(sessionId)
+		}
 		logger.Infof("%s logged out successfully", user.Username)
 	}
 	if err := session.ClearSession(c); err != nil {

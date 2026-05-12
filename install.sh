@@ -921,7 +921,16 @@ install_x-ui() {
     mv -f /usr/bin/x-ui-temp /usr/bin/x-ui
     chmod +x /usr/bin/x-ui
     mkdir -p /var/log/x-ui
+
+    # Start x-ui temporarily for configuration
+    echo -e "${yellow}Starting x-ui for initial configuration...${plain}"
+    nohup ${xui_folder}/x-ui > /dev/null 2>&1 &
+    sleep 2
+
     config_after_install
+
+    # Stop the temporary x-ui process
+    pkill -f "${xui_folder}/x-ui" 2>/dev/null || true
 
     # Etckeeper compatibility
     if [ -d "/etc/.git" ]; then

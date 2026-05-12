@@ -804,15 +804,19 @@ install_x-ui() {
             echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
             tag_version=$(git ls-remote --tags "https://github.com/xy83953441-hue/3x-ui-device-limit.git" 2> /dev/null | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
             if [[ ! -n "$tag_version" ]]; then
-                echo -e "${red}Failed to fetch x-ui version, please check your network connection and try again${plain}"
-                exit 1
+                echo -e "${yellow}Failed to fetch version from GitHub, using default version v3.0.0...${plain}"
+                tag_version="v3.0.0"
             fi
         fi
         echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
         curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
         if [[ $? -ne 0 ]]; then
-            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
-            exit 1
+            echo -e "${yellow}Downloading x-ui failed, trying GitHub mirror...${plain}"
+            curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+            if [[ $? -ne 0 ]]; then
+                echo -e "${red}Download failed, please check your network connection${plain}"
+                exit 1
+            fi
         fi
     else
         tag_version=$1

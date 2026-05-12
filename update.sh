@@ -789,14 +789,15 @@ update_x-ui() {
         echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
         tag_version=$(git ls-remote --tags "https://github.com/xy83953441-hue/3x-ui-device-limit.git" 2> /dev/null | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
         if [[ ! -n "$tag_version" ]]; then
-            _fail "ERROR: Failed to fetch x-ui version, please check your network connection and try again"
+            echo -e "${yellow}Failed to fetch version from GitHub, using default version v3.0.0...${plain}"
+            tag_version="v3.0.0"
         fi
     fi
     echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
     ${curl_bin} -fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2> /dev/null
     if [[ $? -ne 0 ]]; then
-        echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-        ${curl_bin} -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2> /dev/null
+        echo -e "${yellow}Downloading x-ui failed, trying GitHub mirror...${plain}"
+        ${curl_bin} -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2> /dev/null
         if [[ $? -ne 0 ]]; then
             _fail "ERROR: Failed to download x-ui, please be sure that your server can access GitHub"
         fi

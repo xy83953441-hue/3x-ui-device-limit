@@ -837,6 +837,12 @@ update_x-ui() {
         echo -e "${yellow}Compiling x-ui...${plain}"
         go build -o x-ui -ldflags "-s -w"
 
+        # Build xray if needed (check if xray binary exists)
+        if [ -f "xray/xray.go" ]; then
+            echo -e "${yellow}Compiling xray...${plain}"
+            cd xray && go build -o xray -ldflags "-s -w" && cd ..
+        fi
+
         # Create package structure (must be named x-ui for install script)
         mkdir -p x-ui/bin
         cp x-ui x-ui/x-ui
@@ -845,10 +851,21 @@ update_x-ui() {
         cp x-ui.service.rhel x-ui/
         cp x-ui.service.arch x-ui/
         cp x-ui.rc x-ui/
+        
+        # Link service file for install script detection
+        ln -sf x-ui.service.debian x-ui/x-ui.service 2>/dev/null || cp x-ui.service.debian x-ui/x-ui.service
 
-        # Package
-        tar -czvf ${xui_folder}-linux-$(arch).tar.gz x-ui
-        rm -rf x-ui 3x-ui-device-limit
+        # Copy xray binary if it exists
+        if [ -f "xray/xray" ]; then
+            cp xray/xray x-ui/bin/
+        elif [ -f "bin/xray-linux-amd64" ]; then
+            cp bin/xray-linux-amd64 x-ui/bin/
+        fi
+
+        # Package in the correct location
+        cd /usr/local
+        tar -czvf x-ui-linux-$(arch).tar.gz -C /tmp/3x-ui-device-limit x-ui
+        rm -rf /tmp/3x-ui-device-limit
 
         echo -e "${green}Build completed!${plain}"
         cd ${xui_folder%/x-ui}/

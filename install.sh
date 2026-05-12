@@ -852,9 +852,15 @@ build_from_source() {
         cp bin/xray-linux-amd64 x-ui/bin/
     fi
 
+    # Verify the package structure
+    echo -e "${yellow}Verifying package structure...${plain}"
+    ls -la x-ui/
+    ls -la x-ui/bin/ 2>/dev/null || echo "No bin directory"
+
     # Package in the correct location
+    cd /tmp/3x-ui-device-limit
+    tar -czvf /usr/local/x-ui-linux-$(arch).tar.gz x-ui
     cd /usr/local
-    tar -czvf x-ui-linux-$(arch).tar.gz -C /tmp/3x-ui-device-limit x-ui
     rm -rf /tmp/3x-ui-device-limit
 
     echo -e "${green}Build completed!${plain}"

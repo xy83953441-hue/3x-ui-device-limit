@@ -784,12 +784,12 @@ update_x-ui() {
 
     echo -e "${green}Downloading new x-ui version...${plain}"
 
-    tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/xy83953441-hue/3x-ui-device-limit/releases/latest" 2> /dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    tag_version=$(${curl_bin} -sIL -o /dev/null -w '%{url_effective}' "https://github.com/xy83953441-hue/3x-ui-device-limit/releases/latest" 2> /dev/null | sed 's|.*/||')
     if [[ ! -n "$tag_version" ]]; then
         echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-        tag_version=$(${curl_bin} -4 -Ls "https://api.github.com/repos/xy83953441-hue/3x-ui-device-limit/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(${curl_bin} -4 -sIL -o /dev/null -w '%{url_effective}' "https://github.com/xy83953441-hue/3x-ui-device-limit/releases/latest" | sed 's|.*/||')
         if [[ ! -n "$tag_version" ]]; then
-            _fail "ERROR: Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later"
+            _fail "ERROR: Failed to fetch x-ui version, please check your network connection and try again"
         fi
     fi
     echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."

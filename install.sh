@@ -799,12 +799,12 @@ install_x-ui() {
 
     # Download resources
     if [ $# == 0 ]; then
-        tag_version=$(curl -Ls "https://api.github.com/repos/xy83953441-hue/3x-ui-device-limit/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(curl -sIL -o /dev/null -w '%{url_effective}' "https://github.com/xy83953441-hue/3x-ui-device-limit/releases/latest" | sed 's|.*/||')
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-            tag_version=$(curl -4 -Ls "https://api.github.com/repos/xy83953441-hue/3x-ui-device-limit/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            tag_version=$(curl -4 -sIL -o /dev/null -w '%{url_effective}' "https://github.com/xy83953441-hue/3x-ui-device-limit/releases/latest" | sed 's|.*/||')
             if [[ ! -n "$tag_version" ]]; then
-                echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
+                echo -e "${red}Failed to fetch x-ui version, please check your network connection and try again${plain}"
                 exit 1
             fi
         fi

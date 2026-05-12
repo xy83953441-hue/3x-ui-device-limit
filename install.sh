@@ -827,18 +827,18 @@ build_from_source() {
     export PATH=$PATH:/usr/local/go/bin
     go build -o x-ui -ldflags "-s -w"
 
-    # Create package structure
-    mkdir -p x-ui-package/bin
-    cp x-ui x-ui-package/x-ui
-    cp x-ui.sh x-ui-package/x-ui.sh
-    cp x-ui.service.debian x-ui-package/
-    cp x-ui.service.rhel x-ui-package/
-    cp x-ui.service.arch x-ui-package/
-    cp x-ui.rc x-ui-package/
+    # Create package structure (must be named x-ui for install script)
+    mkdir -p x-ui/bin
+    cp x-ui x-ui/x-ui
+    cp x-ui.sh x-ui/x-ui.sh
+    cp x-ui.service.debian x-ui/
+    cp x-ui.service.rhel x-ui/
+    cp x-ui.service.arch x-ui/
+    cp x-ui.rc x-ui/
 
     # Package
-    tar -czvf ${xui_folder}-linux-$(arch).tar.gz -C x-ui-package .
-    rm -rf x-ui-package x-ui 3x-ui-device-limit
+    tar -czvf ${xui_folder}-linux-$(arch).tar.gz x-ui
+    rm -rf x-ui 3x-ui-device-limit
 
     echo -e "${green}Build completed!${plain}"
 }

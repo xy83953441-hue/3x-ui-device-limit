@@ -23,6 +23,14 @@ jobs:
         run: |
           CGO_ENABLED=0 go build -o x-ui -ldflags "-s -w" .
 
+      - name: Download xray-core
+        run: |
+          mkdir -p xray-bin
+          curl -sfLRO "https://github.com/XTLS/Xray-core/releases/download/v26.4.25/Xray-linux-64.zip"
+          unzip -o Xray-linux-64.zip -d xray-bin/ xray
+          mv xray-bin/xray xray/xray
+          rm -rf Xray-linux-64.zip xray-bin
+
       - name: Prepare files
         run: |
           mkdir -p release/x-ui/bin

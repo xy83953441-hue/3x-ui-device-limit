@@ -7,6 +7,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/web/locale"
+	"github.com/mhsanaei/3x-ui/v3/web/service"
 	"github.com/mhsanaei/3x-ui/v3/web/session"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,13 @@ func (a *BaseController) checkLogin(c *gin.Context) {
 		}
 		c.Abort()
 	} else {
+		// Touch the session's last_seen timestamp so active users are
+		// not pruned by CleanExpiredSessionsJob.
+		if sid := session.GetSessionId(c); sid != "" {
+			if err := (service.SessionManagerService{}).UpdateSessionLastSeen(sid); err != nil {
+				logger.Warning("base.checkLogin: failed to update session last_seen:", err)
+			}
+		}
 		c.Next()
 	}
 }

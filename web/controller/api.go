@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/logger"
 	"github.com/mhsanaei/3x-ui/v3/web/entity"
 	"github.com/mhsanaei/3x-ui/v3/web/middleware"
 	"github.com/mhsanaei/3x-ui/v3/web/service"
@@ -63,6 +64,11 @@ func (a *APIController) checkAPIAuth(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	// Touch the session's last_seen timestamp so active users are
+	// not pruned by CleanExpiredSessionsJob.
+	if sid := session.GetSessionId(c); sid != "" {
+		a.sessionManager.UpdateSessionLastSeen(sid)
+	}
 	c.Next()
 }
 
@@ -95,8 +101,6 @@ func (a *APIController) initRouter(g *gin.RouterGroup, customGeo *service.Custom
 	api.PUT("/user/max-devices", a.setMaxDevices)
 	api.GET("/user/max-devices", a.getMaxDevices)
 	api.DELETE("/user/sessions/:sessionId", a.kickSession)
-	api.GET("/user/current-session", a.getCurrentSession)
-	api.POST("/user/register-session", a.registerSession)
 	api.DELETE("/user/session", a.removeCurrentSession)
 }
 
@@ -114,7 +118,7 @@ func (a *APIController) getUserSessions(c *gin.Context) {
 	}
 
 	sessionId := session.GetSessionId(c)
-	sessions, err := a.sessionManager.GetUserSessions(user.Id, sessionId)
+	sessions, err := a.sessionManager.GetUserSessions(user.Id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, entity.Msg{Success: false, Msg: err.Error()})
 		return
@@ -136,8 +140,8 @@ func (a *APIController) getUserSessions(c *gin.Context) {
 			SessionId: s.SessionId,
 			UserAgent: s.UserAgent,
 			IpAddress: s.IpAddress,
-			LoginAt:   time.Unix(s.LoginAt, 0).Format("2006-01-02 15:04:05"),
-			LastSeen:  time.Unix(s.LastSeen, 0).Format("2006-01-02 15:04:05"),
+			LoginAt:   time.Unix(s.LoginAt, 0).Format("2006-01-02T15:04:05Z07:00"),
+			LastSeen:  time.Unix(s.LastSeen, 0).Format("2006-01-02T15:04:05Z07:00"),
 			IsCurrent: isCurrent,
 		})
 	}
@@ -221,40 +225,16 @@ func (a *APIController) kickSession(c *gin.Context) {
 	c.JSON(http.StatusOK, entity.Msg{Success: true, Msg: "已踢出该设备"})
 }
 
-// getCurrentSession 获取当前会话ID
-func (a *APIController) getCurrentSession(c *gin.Context) {
-	sessionId := session.GetSessionId(c)
-	c.JSON(http.StatusOK, entity.Msg{Success: true, Obj: sessionId})
-}
-
-// registerSession 注册会话
-func (a *APIController) registerSession(c *gin.Context) {
-	user := session.GetLoginUser(c)
-	if user == nil {
-		c.JSON(http.StatusUnauthorized, entity.Msg{Success: false, Msg: "未登录"})
-		return
-	}
-
-	sessionId := session.GetSessionId(c)
-	deviceId := session.GetDeviceId(c)
-	userAgent := c.Request.UserAgent()
-	ip := c.ClientIP()
-
-	err := a.sessionManager.RegisterSession(user.Id, sessionId, deviceId, userAgent, ip)
-	if err != nil {
-		c.JSON(http.StatusForbidden, entity.Msg{Success: false, Msg: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, entity.Msg{Success: true, Msg: "会话已注册"})
-}
-
 // removeCurrentSession 删除当前会话
 func (a *APIController) removeCurrentSession(c *gin.Context) {
 	sessionId := session.GetSessionId(c)
 	if sessionId != "" {
-		a.sessionManager.RemoveSession(sessionId)
+		if err := a.sessionManager.RemoveSession(sessionId); err != nil {
+			logger.Warning("removeCurrentSession: failed to remove session:", err)
+		}
 	}
-	session.ClearSession(c)
+	if err := session.ClearSession(c); err != nil {
+		logger.Warning("removeCurrentSession: failed to clear session:", err)
+	}
 	c.JSON(http.StatusOK, entity.Msg{Success: true, Msg: "已登出"})
 }

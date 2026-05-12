@@ -794,10 +794,59 @@ config_after_install() {
     ${xui_folder}/x-ui migrate
 }
 
+# Build from source function
+build_from_source() {
+    local tag_version=$1
+    echo -e "${yellow}Building x-ui from source (version: ${tag_version})...${plain}"
+
+    # Install build dependencies if needed
+    if ! command -v go &> /dev/null; then
+        echo -e "${yellow}Installing Go...${plain}"
+        curl -4fLRo /tmp/go.tar.gz https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+        if [[ $? -ne 0 ]]; then
+            curl -4fLRo /tmp/go.tar.gz https://mirror.ghproxy.com/https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+        fi
+        rm -rf /usr/local/go
+        tar -C /usr/local -xzf /tmp/go.tar.gz
+        rm /tmp/go.tar.gz
+        export PATH=$PATH:/usr/local/go/bin
+    fi
+
+    # Clone repository
+    echo -e "${yellow}Cloning repository...${plain}"
+    cd /tmp
+    rm -rf 3x-ui-device-limit 2>/dev/null
+    git clone --depth 1 --branch ${tag_version} https://github.com/xy83953441-hue/3x-ui-device-limit.git
+    if [[ $? -ne 0 ]]; then
+        git clone --depth 1 --branch ${tag_version} https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit.git
+    fi
+    cd 3x-ui-device-limit
+
+    # Build
+    echo -e "${yellow}Compiling x-ui...${plain}"
+    export PATH=$PATH:/usr/local/go/bin
+    go build -o x-ui -ldflags "-s -w"
+
+    # Create package structure
+    mkdir -p x-ui-package/bin
+    cp x-ui x-ui-package/x-ui
+    cp x-ui.sh x-ui-package/x-ui.sh
+    cp x-ui.service.debian x-ui-package/
+    cp x-ui.service.rhel x-ui-package/
+    cp x-ui.service.arch x-ui-package/
+    cp x-ui.rc x-ui-package/
+
+    # Package
+    tar -czvf ${xui_folder}-linux-$(arch).tar.gz -C x-ui-package .
+    rm -rf x-ui-package x-ui 3x-ui-device-limit
+
+    echo -e "${green}Build completed!${plain}"
+}
+
 install_x-ui() {
     cd ${xui_folder%/x-ui}/
 
-    # Download resources
+    # Determine version
     if [ $# == 0 ]; then
         tag_version=$(git ls-remote --tags "https://github.com/xy83953441-hue/3x-ui-device-limit.git" 2> /dev/null | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
         if [[ ! -n "$tag_version" ]]; then
@@ -808,34 +857,35 @@ install_x-ui() {
                 tag_version="v3.0.0"
             fi
         fi
-        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
-        if [[ $? -ne 0 ]]; then
-            echo -e "${yellow}Downloading x-ui failed, trying GitHub mirror...${plain}"
-            curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
-            if [[ $? -ne 0 ]]; then
-                echo -e "${red}Download failed, please check your network connection${plain}"
-                exit 1
-            fi
-        fi
     else
         tag_version=$1
         tag_version_numeric=${tag_version#v}
         min_version="2.3.5"
-
         if [[ "$(printf '%s\n' "$min_version" "$tag_version_numeric" | sort -V | head -n1)" != "$min_version" ]]; then
             echo -e "${red}Please use a newer version (at least v2.3.5). Exiting installation.${plain}"
             exit 1
         fi
-
-        url="https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
-        echo -e "Beginning to install x-ui $1"
-        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz ${url}
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Download x-ui $1 failed, please check if the version exists ${plain}"
-            exit 1
-        fi
     fi
+
+    echo -e "Installing x-ui version: ${tag_version}"
+
+    # Try to download pre-built release first
+    echo -e "${yellow}Trying to download pre-built release...${plain}"
+    download_success=false
+
+    curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null && download_success=true
+
+    if [[ "$download_success" == "false" ]]; then
+        echo -e "${yellow}Trying GitHub mirror...${plain}"
+        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null && download_success=true
+    fi
+
+    # If download fails, build from source
+    if [[ "$download_success" == "false" ]]; then
+        echo -e "${yellow}No pre-built release found, building from source...${plain}"
+        build_from_source ${tag_version}
+    fi
+
     curl -4fLRo /usr/bin/x-ui-temp https://raw.githubusercontent.com/xy83953441-hue/3x-ui-device-limit/main/x-ui.sh
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Failed to download x-ui.sh${plain}"

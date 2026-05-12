@@ -794,13 +794,64 @@ update_x-ui() {
         fi
     fi
     echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-    ${curl_bin} -fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2> /dev/null
-    if [[ $? -ne 0 ]]; then
-        echo -e "${yellow}Downloading x-ui failed, trying GitHub mirror...${plain}"
-        ${curl_bin} -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2> /dev/null
-        if [[ $? -ne 0 ]]; then
-            _fail "ERROR: Failed to download x-ui, please be sure that your server can access GitHub"
+
+    # Try to download pre-built release first
+    echo -e "${yellow}Trying to download pre-built release...${plain}"
+    download_success=false
+
+    ${curl_bin} -fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null && download_success=true
+
+    if [[ "$download_success" == "false" ]]; then
+        echo -e "${yellow}Trying GitHub mirror...${plain}"
+        ${curl_bin} -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz 2>/dev/null && download_success=true
+    fi
+
+    # If download fails, build from source
+    if [[ "$download_success" == "false" ]]; then
+        echo -e "${yellow}No pre-built release found, building from source...${plain}"
+
+        # Install build dependencies if needed
+        if ! command -v go &> /dev/null; then
+            echo -e "${yellow}Installing Go...${plain}"
+            ${curl_bin} -4fLRo /tmp/go.tar.gz https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+            if [[ $? -ne 0 ]]; then
+                ${curl_bin} -4fLRo /tmp/go.tar.gz https://mirror.ghproxy.com/https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+            fi
+            rm -rf /usr/local/go
+            tar -C /usr/local -xzf /tmp/go.tar.gz
+            rm /tmp/go.tar.gz
         fi
+        export PATH=$PATH:/usr/local/go/bin
+
+        # Clone repository
+        echo -e "${yellow}Cloning repository...${plain}"
+        cd /tmp
+        rm -rf 3x-ui-device-limit 2>/dev/null
+        git clone --depth 1 --branch ${tag_version} https://github.com/xy83953441-hue/3x-ui-device-limit.git
+        if [[ $? -ne 0 ]]; then
+            git clone --depth 1 --branch ${tag_version} https://mirror.ghproxy.com/https://github.com/xy83953441-hue/3x-ui-device-limit.git
+        fi
+        cd 3x-ui-device-limit
+
+        # Build
+        echo -e "${yellow}Compiling x-ui...${plain}"
+        go build -o x-ui -ldflags "-s -w"
+
+        # Create package structure
+        mkdir -p x-ui-package/bin
+        cp x-ui x-ui-package/x-ui
+        cp x-ui.sh x-ui-package/x-ui.sh
+        cp x-ui.service.debian x-ui-package/
+        cp x-ui.service.rhel x-ui-package/
+        cp x-ui.service.arch x-ui-package/
+        cp x-ui.rc x-ui-package/
+
+        # Package
+        tar -czvf ${xui_folder}-linux-$(arch).tar.gz -C x-ui-package .
+        rm -rf x-ui-package x-ui 3x-ui-device-limit
+
+        echo -e "${green}Build completed!${plain}"
+        cd ${xui_folder%/x-ui}/
     fi
 
     if [[ -e ${xui_folder}/ ]]; then

@@ -784,10 +784,10 @@ update_x-ui() {
 
     echo -e "${green}Downloading new x-ui version...${plain}"
 
-    tag_version=$(${curl_bin} -sIL -o /dev/null -w '%{url_effective}' "https://github.com/xy83953441-hue/3x-ui-device-limit/releases/latest" 2> /dev/null | sed 's|.*/||')
+    tag_version=$(git ls-remote --tags "https://github.com/xy83953441-hue/3x-ui-device-limit.git" 2> /dev/null | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
     if [[ ! -n "$tag_version" ]]; then
         echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-        tag_version=$(${curl_bin} -4 -sIL -o /dev/null -w '%{url_effective}' "https://github.com/xy83953441-hue/3x-ui-device-limit/releases/latest" | sed 's|.*/||')
+        tag_version=$(git ls-remote --tags "https://github.com/xy83953441-hue/3x-ui-device-limit.git" 2> /dev/null | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
         if [[ ! -n "$tag_version" ]]; then
             _fail "ERROR: Failed to fetch x-ui version, please check your network connection and try again"
         fi
